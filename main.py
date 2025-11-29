@@ -75,7 +75,7 @@ app = FastAPI(
 
 # Setup Jinja2 templates
 templates = Jinja2Templates(directory="templates")
-
+templates.env.globals["now"] = datetime.now  
 # ============================================================================
 # MongoDB Connection Management
 # ============================================================================
