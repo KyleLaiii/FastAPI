@@ -37,8 +37,8 @@ except ImportError:
 # Configuration
 # ============================================================================
 
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "emogo")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://Kyle:00000000@emogo.cyy5the.mongodb.net/emogo?retryWrites=true&w=majority")
+MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "Emogo")
 MONGODB_COLLECTION_NAME = os.getenv("MONGODB_COLLECTION_NAME", "records")
 
 # ============================================================================
