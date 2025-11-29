@@ -252,6 +252,7 @@
                             <th>記錄時間</th>
                             <th>上傳時間</th>
                             <th>影片路徑</th>
+                            <th>影片下載</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -288,6 +289,13 @@
                                 </td>
                                 <td>
                                     <span class="video-path">{{ record.videoPath }}</span>
+                                </td>
+                                <td>
+                                    {% if record.videoBase64 %}
+                                        <a href="/records/{{ record.id }}/video">下載影片</a>
+                                    {% else %}
+                                        <span style="color: #ccc;">無影片</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                         {% endfor %}

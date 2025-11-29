@@ -20,7 +20,9 @@ import io
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, Request
+import base64
+import io
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -269,3 +271,43 @@ async def export_csv():
     except Exception as e:
         print(f"✗ Error exporting CSV: {e}")
         return {"error": str(e)}, 500
+    
+
+@app.get("/records/{record_id}/video")
+async def download_video(record_id: int):
+    """
+    依照 record 的 id 下載影片(mp4)
+    - 從 MongoDB 找出該 id 的紀錄
+    - 讀取其中的 videoBase64 欄位
+    - 解碼成 bytes 後回傳 video/mp4 檔案
+    """
+    try:
+        # 用 id 欄位查 MongoDB 的紀錄（不是 _id）
+        record = await mongodb_collection.find_one({"id": record_id})
+        if not record:
+            raise HTTPException(status_code=404, detail="Record not found")
+
+        video_b64 = record.get("videoBase64")
+        if not video_b64:
+            raise HTTPException(status_code=404, detail="No video stored for this record")
+
+        try:
+            video_bytes = base64.b64decode(video_b64)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error decoding video: {e}")
+
+        # 用 StreamingResponse 回傳 mp4
+        return StreamingResponse(
+            io.BytesIO(video_bytes),
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": f'attachment; filename="emogo_record_{record_id}.mp4"'
+            },
+        )
+
+    except HTTPException:
+        # 直接往外丟，讓 FastAPI 處理
+        raise
+    except Exception as e:
+        print(f"✗ Error serving video for record {record_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
