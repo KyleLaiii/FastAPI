@@ -243,52 +243,64 @@ async def export_html(request: Request):
 @app.get("/export/csv")
 async def export_csv():
     """
-    GET endpoint to download all records as a CSV file.
-    
-    Retrieves all records from MongoDB, sorts them by timestamp,
-    and streams them as a downloadable CSV file.
-    
-    Returns:
-    - CSV file with all records (Content-Type: text/csv)
+    下載所有紀錄為 CSV 檔（欄位與 /export 頁面的表格對齊）
+
+    欄位：
+    ID, 心情, 心情值, 緯度, 經度, 記錄時間（台北時間）, 上傳時間（台北時間）, 影片路徑
     """
     try:
-        # Fetch all records from MongoDB, sorted by timestamp
+        # 依 timestamp 由舊到新抓全部紀錄
         records = await mongodb_collection.find().sort("timestamp", 1).to_list(None)
-        
-        # Create CSV content in memory
+
+        # 建立 CSV 內容
         output = io.StringIO()
-        fieldnames = [
-            "id", "sentiment", "sentimentValue", "latitude", "longitude",
-            "timestamp", "exportDate", "videoPath"
-        ]
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        
-        # Write header
-        writer.writeheader()
-        
-        # Write records
+        writer = csv.writer(output)
+
+        # 中文表頭，順序跟 export.html 的表格一致
+        writer.writerow([
+            "ID",
+            "心情",
+            "心情值",
+            "緯度",
+            "經度",
+            "記錄時間（台北時間）",
+            "上傳時間（台北時間）",
+            "影片路徑",
+        ])
+
+        # 寫入每一列資料
         for record in records:
-            # Convert datetime objects to Taipei time strings
-            if isinstance(record.get("timestamp"), datetime):
-                record["timestamp"] = format_dt_taipei(record["timestamp"])
-            if isinstance(record.get("exportDate"), datetime):
-                record["exportDate"] = format_dt_taipei(record["exportDate"])
-            
-            # Extract only the fields we need
-            row = {field: record.get(field, "") for field in fieldnames}
-            writer.writerow(row)
-        
-        # Return as streaming response with proper headers
+            ts = record.get("timestamp")
+            exd = record.get("exportDate")
+
+            # 跟網頁一樣，用 format_dt_taipei 轉成台北時間字串
+            ts_str = format_dt_taipei(ts) if isinstance(ts, datetime) else ""
+            exd_str = format_dt_taipei(exd) if isinstance(exd, datetime) else ""
+
+            writer.writerow([
+                record.get("id", ""),
+                record.get("sentiment", ""),
+                record.get("sentimentValue", ""),
+                record.get("latitude", ""),
+                record.get("longitude", ""),
+                ts_str,
+                exd_str,
+                record.get("videoPath", ""),
+            ])
+
+        # 回傳 StreamingResponse
         output.seek(0)
         return StreamingResponse(
             iter([output.getvalue()]),
-            media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=emogo_records.csv"}
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": "attachment; filename=emogo_records.csv"
+            },
         )
-        
+
     except Exception as e:
         print(f"✗ Error exporting CSV: {e}")
-        return {"error": str(e)}, 500
+        raise HTTPException(status_code=500, detail="Error exporting CSV")
     
 
 @app.get("/records/{record_id}/video")
