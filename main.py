@@ -17,11 +17,12 @@ Features:
 import os
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 import base64
 import io
+from zoneinfo import ZoneInfo 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -65,6 +66,23 @@ class ExportPayload(BaseModel):
     recordCount: int
     records: List[Record]
 
+TAIPEI_TZ = ZoneInfo("Asia/Taipei")
+
+def format_dt_taipei(dt: datetime) -> str:
+    """
+    將 datetime 轉成台北時間，格式為 'YYYY-MM-DD HH:MM:SS'
+    如果原本沒有 tzinfo，假設是 UTC。
+    """
+    if dt is None:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt_taipei = dt.astimezone(TAIPEI_TZ)
+    return dt_taipei.strftime("%Y-%m-%d %H:%M:%S")
+
+def now_taipei_str() -> str:
+    """回傳目前台北時間字串，用在頁面 footer。"""
+    return datetime.now(TAIPEI_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 # ============================================================================
 # FastAPI Application Setup
@@ -78,7 +96,7 @@ app = FastAPI(
 
 # Setup Jinja2 templates
 templates = Jinja2Templates(directory="templates")
-templates.env.globals["now"] = datetime.now  
+templates.env.globals["now"] = now_taipei_str
 # ============================================================================
 # MongoDB Connection Management
 # ============================================================================
@@ -202,11 +220,11 @@ async def export_html(request: Request):
         records = await mongodb_collection.find().sort("timestamp", 1).to_list(None)
         
         # Convert datetime objects to strings for template rendering
-        for record in records:
+         for record in records:
             if isinstance(record.get("timestamp"), datetime):
-                record["timestamp"] = record["timestamp"].isoformat()
+                record["timestamp"] = format_dt_taipei(record["timestamp"])
             if isinstance(record.get("exportDate"), datetime):
-                record["exportDate"] = record["exportDate"].isoformat()
+                record["exportDate"] = format_dt_taipei(record["exportDate"])
             # Remove MongoDB ObjectId from display
             if "_id" in record:
                 del record["_id"]
@@ -250,11 +268,11 @@ async def export_csv():
         
         # Write records
         for record in records:
-            # Convert datetime objects to ISO format strings
+            # Convert datetime objects to Taipei time strings
             if isinstance(record.get("timestamp"), datetime):
-                record["timestamp"] = record["timestamp"].isoformat()
+                record["timestamp"] = format_dt_taipei(record["timestamp"])
             if isinstance(record.get("exportDate"), datetime):
-                record["exportDate"] = record["exportDate"].isoformat()
+                record["exportDate"] = format_dt_taipei(record["exportDate"])
             
             # Extract only the fields we need
             row = {field: record.get(field, "") for field in fieldnames}
