@@ -54,6 +54,7 @@ class Record(BaseModel):
     longitude: Optional[float] = None
     timestamp: datetime
     videoPath: str
+    videoBase64: Optional[str] = None
 
 
 class ExportPayload(BaseModel):
