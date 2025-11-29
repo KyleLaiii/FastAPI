@@ -220,7 +220,7 @@ async def export_html(request: Request):
         records = await mongodb_collection.find().sort("timestamp", 1).to_list(None)
         
         # Convert datetime objects to strings for template rendering
-         for record in records:
+        for record in records:
             if isinstance(record.get("timestamp"), datetime):
                 record["timestamp"] = format_dt_taipei(record["timestamp"])
             if isinstance(record.get("exportDate"), datetime):
